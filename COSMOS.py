@@ -21,7 +21,7 @@ def zeropower_via_newtonschulz5(G, steps=10, eps=1e-7):
     return X
 
 
-def standard_galore_with_muon(params: List[Tensor],
+def soap_with_muon(params: List[Tensor],
             grads: List[Tensor],
             exp_avgs: List[Tensor],
             exp_avg_sqs: List[Tensor],
@@ -40,10 +40,6 @@ def standard_galore_with_muon(params: List[Tensor],
             maximize: bool,
             ratio:float,
             ):
-    r"""Functional API that performs Adam algorithm computation.
-
-    See :class:`~torch.optim.Adam` for details.
-    """
 
     for i, param in enumerate(params):
 
@@ -106,7 +102,7 @@ def standard_galore_with_muon(params: List[Tensor],
             param.addcdiv_(exp_avg, denom, value=-step_size)
 
 
-class Standard_GaMu(Optimizer):
+class COSMOS(Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.96, 0.96), eps=1e-8, lr_ratio=0.1, rank=64,
                  weight_decay=0, amsgrad=False, *, maximize: bool = False):
@@ -124,12 +120,12 @@ class Standard_GaMu(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, amsgrad=amsgrad, maximize=maximize)
-        super(Standard_GaMu, self).__init__(params, defaults)
+        super(COSMOS, self).__init__(params, defaults)
         self.lr_ratio = lr_ratio
         self.rank = rank
 
     def __setstate__(self, state):
-        super(Standard_GaMu, self).__setstate__(state)
+        super(COSMOS, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault('amsgrad', False)
             group.setdefault('maximize', False)
@@ -163,7 +159,7 @@ class Standard_GaMu(Optimizer):
                     params_with_grad.append(p)
                     if p.grad.is_sparse:
                         raise RuntimeError(
-                            'Adam does not support sparse gradients, please consider SparseAdam instead')
+                            'COSMOS does not support sparse gradients.')
                     grads.append(p.grad)
 
                     state = self.state[p]
@@ -201,7 +197,7 @@ class Standard_GaMu(Optimizer):
                     # record the step after step update
                     state_steps.append(state['step'])
 
-            standard_galore_with_muon(
+            soap_with_muon(
                 params_with_grad,
                 grads,
                 exp_avgs,
