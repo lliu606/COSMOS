@@ -102,7 +102,7 @@ def soap_with_muon(params: List[Tensor],
             param.addcdiv_(exp_avg, denom, value=-step_size)
 
 
-class COSMOS_for_llama(Optimizer):
+class COSMOS_for_gpt(Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.96, 0.96), eps=1e-8, lr_ratio=0.1, rank=64,
                  weight_decay=0, amsgrad=False, *, maximize: bool = False):
@@ -120,12 +120,12 @@ class COSMOS_for_llama(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, amsgrad=amsgrad, maximize=maximize)
-        super(COSMOS_for_llama, self).__init__(params, defaults)
+        super(COSMOS_for_gpt, self).__init__(params, defaults)
         self.lr_ratio = lr_ratio
         self.rank = rank
 
     def __setstate__(self, state):
-        super(COSMOS_for_llama, self).__setstate__(state)
+        super(COSMOS_for_gpt, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault('amsgrad', False)
             group.setdefault('maximize', False)
