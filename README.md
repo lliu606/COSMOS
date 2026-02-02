@@ -5,7 +5,7 @@ This is the official (preliminary) implementation of the **COSMOS** optimizer. T
 ```
 from COSMOS_optim import COSMOS
 
-optimizer = COSMOS(model.parameters(),lr = 2e-3, betas=(0.95, 0.95), weight_decay=0.1, lr_ratio=0.2)
+optimizer = COSMOS(model.parameters(),lr = 2e-3, betas=(0.95, 0.95), nestrov=True, weight_decay=0.1, lr_ratio=0.2)
 ```
 
 Here lr_ratio is the ratio of learning rate for hidden layers to that for embedding layer.
