@@ -38,6 +38,8 @@ def cosmos(params: List[Tensor],
             eps: float,
             maximize: bool,
             ratio:float,
+            gamma:float,
+            nestrov:bool,
             ):
     r"""Functional API that performs Adam algorithm computation.
 
@@ -78,20 +80,22 @@ def cosmos(params: List[Tensor],
             low_rank_grad = torch.matmul(grad, exp_avg_p)
             exp_avg_sq.mul_(beta2).addcmul_(low_rank_grad, low_rank_grad.conj(), value=1 - beta2)
 
-            grad.add_(exp_avg, alpha=beta1)
-            grad.mul_(1 / (1 + beta1 * bias_correction1))
+            if nestrov:
+                grad.add_(exp_avg, alpha=beta1)
+                grad.mul_(1 / (1 + beta1 * bias_correction1))
+            else:
+                grad.mul_(1 / bias_correction1)
 
             t = torch.matmul(grad, exp_avg_p)
-            step_size = lr / bias_correction1
-            t1 = t/((exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(eps)) # * step_size
-            t1 = torch.matmul(t1, exp_avg_p.T)
 
+            t1 = t/((exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(eps))
+            t1 = torch.matmul(t1, exp_avg_p.T)
         
             t = grad - torch.matmul(t, exp_avg_p.T)
             t = zeropower_via_newtonschulz5(t, steps=5)
-            t = t/(t.norm() + eps)
+            t = scale * t/(t.norm() + eps)
 
-            t1.add_(t, alpha = scale * 0.2)
+            t1.add_(t, alpha = gamma)
 
             if weight_decay > 0:
                 param.data.mul_(1-lr*weight_decay)
@@ -125,7 +129,7 @@ def cosmos(params: List[Tensor],
 class COSMOS(Optimizer):
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, lr_ratio=0.1, rank=64,
-                 weight_decay=0, amsgrad=False, *, maximize: bool = False):
+                 weight_decay=0, gamma=0.2, nestrov=True, amsgrad=False, *, maximize: bool = False):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -136,11 +140,12 @@ class COSMOS(Optimizer):
             raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
         if not 0.0 <= weight_decay:
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-        defaults = dict(lr=lr, betas=betas, eps=eps,
-                        weight_decay=weight_decay, amsgrad=amsgrad, maximize=maximize)
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, amsgrad=amsgrad, maximize=maximize)
         super(COSMOS, self).__init__(params, defaults)
         self.lr_ratio = lr_ratio
         self.rank = rank
+        self.nestrov = nestrov
+        self.gamma = gamma
 
     def __setstate__(self, state):
         super(COSMOS, self).__setstate__(state)
@@ -232,6 +237,8 @@ class COSMOS(Optimizer):
                 eps=group['eps'],
                 maximize=group['maximize'],
                 ratio=self.lr_ratio,
+                gamma=self.gamma,
+                nestrov = self.nestrov,
                 )
 
         return loss
